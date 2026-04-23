@@ -72,7 +72,7 @@ const LEVELS = [
     [1,2,1,1,1,2,2,2,2,1,1,2,2,2,2,1,1,1,2,1],
     [1,2,2,2,2,2,2,2,2,4,4,2,2,2,2,2,2,2,2,1],
   ]},
-  { name: 'La Boca', exit: 'Subte', chorroCount: 4, chorroSpeed: 130, aiInterval: 200, canaPowerDuration: 5000, map: [
+  { name: 'La Boca', exit: 'Subte', chorroCount: 4, chorroSpeed: 110, aiInterval: 320, canaPowerDuration: 6000, map: [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     [1,5,2,1,2,2,1,2,2,1,1,2,2,1,2,2,1,2,2,1],
     [1,2,2,1,2,1,1,2,1,1,1,1,2,1,1,2,1,1,2,1],
@@ -298,19 +298,68 @@ const VFX = {
 function generateTextures(scene){
   const g = scene.make.graphics({x:0,y:0,add:false});
 
-  // Banana 32×32
+  // Banana 32×32 — forma de media luna con cara
   g.clear();
-  g.fillStyle(PALETTE.bananaDark);
-  g.fillRect(10, 5, 12, 22);
-  g.fillStyle(PALETTE.banana);
-  g.fillRect(11, 6, 10, 20);
-  g.fillRect(12, 4, 4, 2);
-  g.fillStyle(PALETTE.bananaDark);
-  g.fillRect(14, 3, 3, 3);
+  const BAN = PALETTE.banana;
+  const BAND = PALETTE.bananaDark;
+  const BANL = 0xfff099;      // highlight amarillo claro
+  const BANS = 0x6b4a15;      // cabito marrón
+  const BANS2 = 0x3d2808;     // cabito oscuro
+
+  // Cabito (stem) arriba-derecha
+  g.fillStyle(BANS2);
+  g.fillRect(20, 2, 2, 2);
+  g.fillStyle(BANS);
+  g.fillRect(19, 3, 4, 2);
+  g.fillRect(18, 5, 5, 1);
+
+  // Cuerpo curvado (crescent) — franjas horizontales que dibujan una "C" inclinada
+  g.fillStyle(BAN);
+  g.fillRect(14, 6, 7, 2);
+  g.fillRect(11, 8, 10, 2);
+  g.fillRect(9, 10, 11, 2);
+  g.fillRect(7, 12, 11, 2);
+  g.fillRect(6, 14, 11, 2);
+  g.fillRect(5, 16, 11, 2);
+  g.fillRect(6, 18, 11, 2);
+  g.fillRect(7, 20, 11, 2);
+  g.fillRect(9, 22, 10, 2);
+  g.fillRect(12, 24, 8, 1);
+  g.fillRect(15, 25, 5, 1);
+  g.fillRect(18, 26, 3, 1);
+
+  // Sombra curva inferior/derecha (da volumen)
+  g.fillStyle(BAND);
+  g.fillRect(17, 10, 3, 1);
+  g.fillRect(15, 12, 3, 1);
+  g.fillRect(13, 14, 4, 1);
+  g.fillRect(12, 16, 4, 1);
+  g.fillRect(13, 18, 4, 1);
+  g.fillRect(14, 20, 4, 1);
+  g.fillRect(16, 22, 3, 1);
+  // Puntita final (marrón)
+  g.fillStyle(BANS);
+  g.fillRect(19, 25, 2, 1);
+  g.fillRect(20, 26, 1, 1);
+
+  // Highlight superior/izquierda
+  g.fillStyle(BANL);
+  g.fillRect(12, 8, 3, 1);
+  g.fillRect(10, 10, 3, 1);
+  g.fillRect(8, 12, 3, 1);
+  g.fillRect(7, 14, 2, 1);
+  g.fillRect(6, 16, 2, 1);
+  g.fillRect(7, 18, 2, 1);
+  g.fillRect(8, 20, 2, 1);
+  g.fillRect(10, 22, 2, 1);
+
+  // Carita (en la parte más ancha, centro aproximado)
   g.fillStyle(0x000000);
-  g.fillRect(13, 12, 2, 2); // eye
-  g.fillRect(17, 12, 2, 2); // eye
-  g.fillRect(14, 18, 4, 1); // mouth
+  g.fillRect(9, 15, 2, 2);    // ojo izq
+  g.fillRect(13, 15, 2, 2);   // ojo der
+  g.fillRect(10, 19, 4, 1);   // boca (sonrisa)
+  g.fillRect(11, 20, 2, 1);
+
   g.generateTexture('banana', 32, 32);
 
   // Peso 16×16
@@ -355,53 +404,91 @@ function generateTextures(scene){
   g.fillRect(4, 6, 2, 1);
   g.generateTexture('heart', 16, 16);
 
-  // Chorro normal 24×24 — ghost-like
-  g.clear();
-  g.fillStyle(PALETTE.chorro);
-  g.fillRect(5, 1, 14, 2);
-  g.fillRect(3, 3, 18, 2);
-  g.fillRect(2, 5, 20, 15);
-  g.fillRect(2, 20, 3, 2);
-  g.fillRect(7, 20, 3, 2);
-  g.fillRect(12, 20, 3, 2);
-  g.fillRect(17, 20, 4, 2);
-  g.fillStyle(PALETTE.chorroEyes);
-  g.fillRect(6, 9, 4, 5);
-  g.fillRect(14, 9, 4, 5);
-  g.fillStyle(0x000000);
-  g.fillRect(7, 11, 2, 2);
-  g.fillRect(15, 11, 2, 2);
+  // Chorro 24×24 — inspirado en la foto: gorra blanca, lentes negros, campera azul/blanca, fierro
+  const drawChorro = (bodyBlue, accentWhite, skin, capColor) => {
+    g.clear();
+    // Gorra (visera hacia atrás)
+    g.fillStyle(capColor);
+    g.fillRect(7, 1, 10, 1);
+    g.fillRect(6, 2, 12, 1);
+    g.fillRect(5, 3, 14, 3);
+    // Sombra/banda gorra
+    g.fillStyle(0x7f8c8d);
+    g.fillRect(5, 6, 14, 1);
+    // Cara
+    g.fillStyle(skin);
+    g.fillRect(7, 7, 10, 5);
+    g.fillRect(6, 8, 1, 3); // oreja izq
+    g.fillRect(17, 8, 1, 3); // oreja der
+    // Lentes negros (barra continua)
+    g.fillStyle(0x0a0a0a);
+    g.fillRect(7, 8, 10, 2);
+    g.fillStyle(0x2c2c2c);
+    g.fillRect(8, 8, 1, 1); // reflejo lente
+    g.fillRect(13, 8, 1, 1);
+    // Boca
+    g.fillStyle(0x5d3a1a);
+    g.fillRect(10, 11, 4, 1);
+    // Cuello
+    g.fillStyle(skin);
+    g.fillRect(10, 12, 4, 1);
+    // Campera base (azul)
+    g.fillStyle(bodyBlue);
+    g.fillRect(3, 13, 18, 9);
+    // Stripes blancas laterales estilo tracksuit
+    g.fillStyle(accentWhite);
+    g.fillRect(3, 13, 2, 8);
+    g.fillRect(19, 13, 2, 8);
+    // Cierre central
+    g.fillStyle(0x0d2850);
+    g.fillRect(11, 13, 2, 9);
+    // Detalle pecho (logo tipo swoosh)
+    g.fillStyle(accentWhite);
+    g.fillRect(14, 15, 3, 1);
+    g.fillRect(15, 16, 2, 1);
+    // Mano izquierda sosteniendo fierro
+    g.fillStyle(skin);
+    g.fillRect(1, 13, 2, 2);
+    // Fierro (revólver apuntado arriba)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(0, 8, 2, 5);    // caño
+    g.fillRect(0, 13, 3, 2);   // cuerpo
+    g.fillRect(1, 15, 2, 2);   // empuñadura
+    // Mano derecha apuntando al pecho
+    g.fillStyle(skin);
+    g.fillRect(20, 15, 2, 2);
+    // Pantalones / piernas
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(5, 22, 5, 2);
+    g.fillRect(14, 22, 5, 2);
+  };
+
+  drawChorro(0x1a4c80, 0xffffff, 0xd4a574, 0xffffff);
   g.generateTexture('chorro', 24, 24);
 
-  // Chorro scared 24×24
-  g.clear();
-  g.fillStyle(PALETTE.chorroScared);
-  g.fillRect(5, 1, 14, 2);
-  g.fillRect(3, 3, 18, 2);
-  g.fillRect(2, 5, 20, 15);
-  g.fillRect(2, 20, 3, 2);
-  g.fillRect(7, 20, 3, 2);
-  g.fillRect(12, 20, 3, 2);
-  g.fillRect(17, 20, 4, 2);
-  g.fillStyle(PALETTE.chorroEyes);
-  g.fillRect(6, 10, 3, 3);
-  g.fillRect(15, 10, 3, 3);
-  g.fillStyle(PALETTE.chorroEyes);
-  g.fillRect(6, 15, 2, 2);
-  g.fillRect(10, 15, 2, 2);
-  g.fillRect(14, 15, 2, 2);
-  g.fillRect(18, 15, 2, 2);
-  g.fillRect(8, 17, 2, 2);
-  g.fillRect(12, 17, 2, 2);
-  g.fillRect(16, 17, 2, 2);
+  // Chorro asustado 24×24 — mismo diseño pero en tonos azulados + cara asustada
+  drawChorro(0x2980b9, 0xaed6f1, 0xaed6f1, 0xd6eaf8);
+  // Sobrescribir lentes → ojos asustados grandes blancos
+  g.fillStyle(0xffffff);
+  g.fillRect(7, 7, 4, 4);
+  g.fillRect(13, 7, 4, 4);
+  g.fillStyle(0x1a1a1a);
+  g.fillRect(8, 8, 2, 2);
+  g.fillRect(14, 8, 2, 2);
+  // Boca zigzag asustado
+  g.fillStyle(0x1a1a1a);
+  g.fillRect(8, 11, 2, 1);
+  g.fillRect(10, 10, 2, 1);
+  g.fillRect(12, 11, 2, 1);
+  g.fillRect(14, 10, 2, 1);
   g.generateTexture('chorro-scared', 24, 24);
 
-  // Chorro eaten (sólo ojos) 24×24
+  // Chorro eaten — solo ojos flotando
   g.clear();
-  g.fillStyle(PALETTE.chorroEyes);
+  g.fillStyle(0xffffff);
   g.fillRect(5, 9, 5, 6);
   g.fillRect(14, 9, 5, 6);
-  g.fillStyle(0x000000);
+  g.fillStyle(0x1a4c80);
   g.fillRect(7, 11, 2, 2);
   g.fillRect(16, 11, 2, 2);
   g.generateTexture('chorro-eyes', 24, 24);
@@ -525,6 +612,10 @@ class BootScene extends Phaser.Scene {
     this.add.text(W/2, H/2, 'CARGANDO...', {
       fontFamily: 'monospace', fontSize: '16px', color: '#ffffff'
     }).setOrigin(0.5);
+    // Billete real de 1000 pesos como pickup
+    this.load.image('billete', 'Billete10002023.jpg');
+    // Foto del chorro (enemigo real)
+    this.load.image('chorro-photo', 'hackathon.png');
   }
   create(){
     generateTextures(this);
@@ -544,40 +635,53 @@ class MenuScene extends Phaser.Scene {
     const cx = W/2;
     this.add.rectangle(cx, H/2, W, H, PALETTE.bg);
 
-    // Banana grande
-    this.add.image(cx, 120, 'banana').setScale(3);
+    // Banana logo más chica para dejar espacio al menú
+    this.add.image(cx, 72, 'banana').setScale(2);
 
-    this.add.text(cx, 190, 'PLÁTANO', {
-      fontFamily: FONT, fontSize: '32px', color: PALETTE.textAccent,
+    this.add.text(cx, 122, 'PLÁTANO', {
+      fontFamily: FONT, fontSize: '26px', color: PALETTE.textAccent,
       stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5);
 
-    this.add.text(cx, 230, 'EN PELIGRO', {
-      fontFamily: FONT, fontSize: '32px', color: PALETTE.textAccent,
+    this.add.text(cx, 154, 'EN PELIGRO', {
+      fontFamily: FONT, fontSize: '26px', color: PALETTE.textAccent,
       stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5);
 
-    this.add.text(cx, 270, 'Escapá de los chorros. Llegá al subte.', {
-      fontFamily: FONT, fontSize: '9px', color: PALETTE.textDim
+    this.add.text(cx, 186, `HIGH SCORE: $${Store.getHighScore()}`, {
+      fontFamily: FONT, fontSize: '10px', color: PALETTE.textPeso
     }).setOrigin(0.5);
 
-    this.add.text(cx, 310, `HIGH SCORE: $${Store.getHighScore()}`, {
-      fontFamily: FONT, fontSize: '12px', color: PALETTE.textPeso
-    }).setOrigin(0.5);
+    // Opciones
+    this.selIdx = 0;
+    this.options = [
+      { label: 'CAMPAÑA COMPLETA',      levelIndex: 0, mode: 'campaign' },
+      { label: 'NIVEL 1 — PALERMO',     levelIndex: 0, mode: 'single'   },
+      { label: 'NIVEL 2 — ONCE',        levelIndex: 1, mode: 'single'   },
+      { label: 'NIVEL 3 — LA BOCA',     levelIndex: 2, mode: 'single'   }
+    ];
+    const startY = 230;
+    const gap = 32;
+    this.labels = this.options.map((o, i) => {
+      const t = this.add.text(cx, startY + i * gap, '', {
+        fontFamily: FONT, fontSize: '13px', color: PALETTE.textPrimary
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => this.launch(i));
+      t.on('pointerover', () => { this.selIdx = i; this.refresh(); Audio.sfx('menu'); });
+      return t;
+    });
+    this.refresh();
 
-    const prompt = this.add.text(cx, 360, 'PRESIONÁ ESPACIO', {
-      fontFamily: FONT, fontSize: '16px', color: PALETTE.textPrimary
-    }).setOrigin(0.5);
-    this.tweens.add({ targets: prompt, alpha: 0.2, duration: 550, yoyo: true, repeat: -1 });
-
-    this.add.text(cx, 410, 'FLECHAS/WASD MOVER  ·  ESC PAUSA', {
+    this.add.text(cx, H - 64, '↑↓ ELEGIR   ENTER/ESPACIO JUGAR', {
       fontFamily: FONT, fontSize: '8px', color: PALETTE.textDim
     }).setOrigin(0.5);
-    this.add.text(cx, 428, 'M MUTE  ·  C CRT', {
+    this.add.text(cx, H - 46, 'FLECHAS/WASD MOVER  ·  ESC PAUSA', {
       fontFamily: FONT, fontSize: '8px', color: PALETTE.textDim
     }).setOrigin(0.5);
-
-    this.add.text(cx, H - 18, 'Platanus Hackathon 2026', {
+    this.add.text(cx, H - 30, 'M MUTE  ·  C CRT', {
+      fontFamily: FONT, fontSize: '8px', color: PALETTE.textDim
+    }).setOrigin(0.5);
+    this.add.text(cx, H - 12, 'Platanus Hackathon 2026', {
       fontFamily: FONT, fontSize: '7px', color: PALETTE.textDim
     }).setOrigin(0.5);
 
@@ -587,9 +691,29 @@ class MenuScene extends Phaser.Scene {
     // Unlock audio on first key
     this.input.keyboard.once('keydown', () => Audio.resume());
 
-    this.input.keyboard.once('keydown-SPACE', () => {
-      Audio.sfx('menu');
-      this.scene.start('Game', { levelIndex: 0, score: 0, lives: 3, source: 'new' });
+    const n = this.options.length;
+    this.input.keyboard.on('keydown-UP',    () => { this.selIdx = (this.selIdx - 1 + n) % n; this.refresh(); Audio.sfx('menu'); });
+    this.input.keyboard.on('keydown-DOWN',  () => { this.selIdx = (this.selIdx + 1) % n;     this.refresh(); Audio.sfx('menu'); });
+    this.input.keyboard.on('keydown-W',     () => { this.selIdx = (this.selIdx - 1 + n) % n; this.refresh(); Audio.sfx('menu'); });
+    this.input.keyboard.on('keydown-S',     () => { this.selIdx = (this.selIdx + 1) % n;     this.refresh(); Audio.sfx('menu'); });
+    this.input.keyboard.on('keydown-ENTER', () => this.launch(this.selIdx));
+    this.input.keyboard.on('keydown-SPACE', () => this.launch(this.selIdx));
+  }
+  refresh(){
+    this.labels.forEach((l, i) => {
+      const selected = i === this.selIdx;
+      l.setColor(selected ? PALETTE.textAccent : PALETTE.textPrimary);
+      l.setText((selected ? '> ' : '  ') + this.options[i].label + (selected ? ' <' : '  '));
+    });
+  }
+  launch(i){
+    Audio.sfx('menu');
+    const o = this.options[i];
+    this.scene.start('Game', {
+      levelIndex: o.levelIndex,
+      score: 0, lives: 3,
+      source: 'new',
+      mode: o.mode
     });
   }
 }
@@ -602,6 +726,7 @@ class GameScene extends Phaser.Scene {
     this.score = data.score ?? 0;
     this.lives = data.lives ?? 3;
     this.source = data.source ?? 'new';
+    this.mode = data.mode ?? 'campaign';  // 'campaign' | 'single'
     this.scoreAtLevelStart = this.score;
     this.level = LEVELS[this.levelIndex];
     this.mapData = this.level.map.map(row => [...row]);
@@ -616,6 +741,10 @@ class GameScene extends Phaser.Scene {
     this.comboTimer = null;
     this.exitUnlocked = false;
     this._blockedToastAt = 0;
+    this.playerDir = null;       // dir actual: 'L','R','U','D' o null
+    this.playerNextDir = null;   // dir en buffer esperando alineación
+    this._chaseReady = false;    // gracia al comenzar el nivel
+    this._graceEnd = 0;
   }
 
   create(){
@@ -638,6 +767,25 @@ class GameScene extends Phaser.Scene {
       this.phase = 'playing';
       this.physics.world.resume();
       Audio.musicStart();
+      this.startGrace();
+    });
+  }
+
+  startGrace(){
+    const total = 5000;
+    this._chaseReady = false;
+    this._graceEnd = this.time.now + total;
+    this._graceLabel = this.add.text(W/2, 32, 'VENTAJA 5', {
+      fontFamily: FONT, fontSize: '11px', color: PALETTE.textAccent,
+      stroke: '#000', strokeThickness: 3
+    }).setOrigin(0.5).setDepth(50);
+    this.time.delayedCall(total, () => {
+      this._chaseReady = true;
+      if (this._graceLabel){ this._graceLabel.destroy(); this._graceLabel = null; }
+      VFX.flashText(this, '¡AHÍ VIENEN!', W/2, H/2 - 40, {
+        color: PALETTE.textDanger, size: '20px', duration: 900, rise: 30
+      });
+      VFX.shake(this, 'light');
     });
   }
 
@@ -698,16 +846,28 @@ class GameScene extends Phaser.Scene {
           this.physics.add.existing(wall, true);
           this.wallGroup.add(wall);
         } else if (tile === T.PESO){
-          const dot = this.physics.add.image(x, y, 'peso').setScale(1);
-          this.pesoGroup.add(dot);
+          const bill = this.pesoGroup.create(x, y, 'billete');
+          bill.setDisplaySize(26, 11);
+          bill.refreshBody();
+          // Balanceo sutil (solo ángulo para no mover el body estático)
+          this.tweens.add({
+            targets: bill, angle: { from: -6, to: 6 },
+            duration: 900 + Math.random() * 200,
+            yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+          });
           this.pesoCount++;
           this.pesoTotal++;
         } else if (tile === T.CANA){
-          const cana = this.physics.add.image(x, y, 'cana').setScale(1);
-          this.canaGroup.add(cana);
+          const cana = this.canaGroup.create(x, y, 'cana');
+          // Pulso visual para que no se vea "estática"
+          this.tweens.add({
+            targets: cana,
+            scale: { from: 1, to: 1.2 },
+            alpha: { from: 1, to: 0.85 },
+            duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+          });
         } else if (tile === T.EXIT){
-          const ex = this.physics.add.image(x, y, 'exit-locked');
-          this.exitGroup.add(ex);
+          this.exitGroup.create(x, y, 'exit-locked');
         } else if (tile === T.SPAWN){
           this.playerSpawn = { col: c, row: r };
         } else if (tile === T.CHORRO){
@@ -793,11 +953,12 @@ class GameScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.player, this.exitGroup, () => {
       if (!this.exitUnlocked){
-        if (this.time.now - this._blockedToastAt > 1000){
+        if (this.time.now - this._blockedToastAt > 1400){
           this._blockedToastAt = this.time.now;
-          VFX.flashText(this, `FALTAN ${this.pesoCount}`, this.player.x, this.player.y - 20, {
-            color: PALETTE.textDanger, size: '10px', duration: 800
+          VFX.flashText(this, `FALTAN ${this.pesoCount} PESOS`, W/2, H/2, {
+            color: PALETTE.textDanger, size: '16px', duration: 1200, rise: 10
           });
+          VFX.shake(this, 'light');
         }
         return;
       }
@@ -812,19 +973,36 @@ class GameScene extends Phaser.Scene {
     spawns.forEach((sp) => {
       const x = sp.col * TILE + TILE/2;
       const y = sp.row * TILE + TILE/2;
-      const chorro = this.physics.add.image(x, y, 'chorro').setDisplaySize(28, 28);
+      const chorro = this.physics.add.image(x, y, 'chorro-photo').setDisplaySize(30, 30);
       chorro.body.setSize(22, 22);
       chorro.spawnCol = sp.col;
       chorro.spawnRow = sp.row;
       chorro.eaten = false;
       this.physics.add.collider(chorro, this.wallGroup);
       this.physics.add.overlap(chorro, this.player, () => {
+        if (!this._chaseReady) return;       // gracia: no dañan
         if (chorro.eaten) return;
         if (this.canaActive) this.eatChorro(chorro);
         else this.loseLife();
       });
       this.chorros.push(chorro);
     });
+    // Colisión entre chorros → no se montan uno encima del otro (antes parecía que uno desaparecía)
+    this.physics.add.collider(this.chorros, this.chorros);
+  }
+
+  // Cambia apariencia del chorro según su estado
+  setChorroLook(c, state){
+    if (state === 'eaten'){
+      c.setTexture('chorro-eyes');
+      c.setDisplaySize(24, 24);
+      c.clearTint();
+    } else {
+      c.setTexture('chorro-photo');
+      c.setDisplaySize(30, 30);
+      if (state === 'scared') c.setTint(0x3498db);
+      else c.clearTint();
+    }
   }
 
   setupInput(){
@@ -851,6 +1029,7 @@ class GameScene extends Phaser.Scene {
 
   moveEnemies(){
     if (this.phase !== 'playing') return;
+    if (!this._chaseReady) return;       // gracia: se quedan en la casa
     if (!this.player || !this.player.active) return;
     const px = Math.floor(this.player.x / TILE);
     const py = Math.floor(this.player.y / TILE);
@@ -878,7 +1057,7 @@ class GameScene extends Phaser.Scene {
     if (this.canaTimer){ this.canaTimer.remove(); this.canaTimer = null; }
     this.canaActive = true;
     this.canaRemainingMs = this.level.canaPowerDuration;
-    this.chorros.forEach(c => { if (!c.eaten) c.setTexture('chorro-scared'); });
+    this.chorros.forEach(c => { if (!c.eaten) this.setChorroLook(c, 'scared'); });
     Audio.sfx('cana');
     VFX.flashText(this, '¡CANA!', W/2, H/2 - 80, {
       color: PALETTE.textCana, size: '22px', duration: 900, rise: 30
@@ -887,14 +1066,14 @@ class GameScene extends Phaser.Scene {
       this.canaActive = false;
       this.canaRemainingMs = 0;
       this.canaTimer = null;
-      this.chorros.forEach(c => { if (c.active && !c.eaten) c.setTexture('chorro'); });
+      this.chorros.forEach(c => { if (c.active && !c.eaten) this.setChorroLook(c, 'normal'); });
     });
   }
 
   eatChorro(chorro){
     if (chorro.eaten) return;
     chorro.eaten = true;
-    chorro.setTexture('chorro-eyes');
+    this.setChorroLook(chorro, 'eaten');
     chorro.setAlpha(0.85);
     chorro.body.checkCollision.none = true;
     chorro.setVelocity(0, 0);
@@ -911,7 +1090,7 @@ class GameScene extends Phaser.Scene {
       chorro.setAlpha(1);
       chorro.body.checkCollision.none = false;
       chorro.eaten = false;
-      chorro.setTexture(this.canaActive ? 'chorro-scared' : 'chorro');
+      this.setChorroLook(chorro, this.canaActive ? 'scared' : 'normal');
     });
   }
 
@@ -961,10 +1140,17 @@ class GameScene extends Phaser.Scene {
           this.playerSpawn.row * TILE + TILE/2
         );
         this.player.setVelocity(0, 0);
+        this.playerDir = null;
+        this.playerNextDir = null;
         this.chorros.forEach(c => {
           if (!c.active) return;
           c.setPosition(c.spawnCol * TILE + TILE/2, c.spawnRow * TILE + TILE/2);
           c.setVelocity(0, 0);
+          // Resetear estado 'comido' si murieron con un chorro en ese estado
+          c.eaten = false;
+          c.setAlpha(1);
+          c.body.checkCollision.none = false;
+          this.setChorroLook(c, this.canaActive ? 'scared' : 'normal');
         });
         this._invincible = false;
       }
@@ -978,20 +1164,38 @@ class GameScene extends Phaser.Scene {
     this.score += 500;
     this.updateHUD();
     if (this.aiTimer) this.aiTimer.remove();
+    // Detener enemigos y jugador
+    if (this.chorros) this.chorros.forEach(c => c.active && c.setVelocity(0, 0));
+    if (this.player) this.player.setVelocity(0, 0);
     Audio.musicStop();
     VFX.shake(this, 'light');
 
     const next = this.levelIndex + 1;
-    const isWin = next >= LEVELS.length;
+    const isWin = this.mode === 'single' || next >= LEVELS.length;
     Audio.sfx(isWin ? 'win' : 'levelup');
 
     this.cameras.main.flash(500, 245, 200, 70);
-    this.time.delayedCall(700, () => {
+
+    // Banner "NIVEL COMPLETADO"
+    const banner = this.add.text(W/2, H/2 - 20, '¡NIVEL COMPLETADO!', {
+      fontFamily: FONT, fontSize: '22px', color: PALETTE.textAccent,
+      stroke: '#000', strokeThickness: 5
+    }).setOrigin(0.5).setDepth(200).setScale(0.2);
+    this.tweens.add({
+      targets: banner, scale: 1, duration: 260, ease: 'Back.easeOut'
+    });
+    this.add.text(W/2, H/2 + 18, `+500 BONUS · $${this.score}`, {
+      fontFamily: FONT, fontSize: '11px', color: PALETTE.textPeso,
+      stroke: '#000', strokeThickness: 3
+    }).setOrigin(0.5).setDepth(200);
+
+    this.time.delayedCall(1500, () => {
       if (isWin) {
         this.scene.start('Win', { score: this.score });
       } else {
         this.scene.start('Game', {
-          levelIndex: next, score: this.score, lives: this.lives, source: 'next'
+          levelIndex: next, score: this.score, lives: this.lives,
+          source: 'next', mode: this.mode
         });
       }
     });
@@ -1005,20 +1209,86 @@ class GameScene extends Phaser.Scene {
     if (!this.player || !this.player.active) return;
 
     const speed = 130;
+
+    // ── Input → dirección pedida (cardinal, sin diagonales) ───────
+    // Prioridad: la última dirección presionada gana.
+    const L = this.cursors.left.isDown  || this.wasd.left.isDown;
+    const R = this.cursors.right.isDown || this.wasd.right.isDown;
+    const U = this.cursors.up.isDown    || this.wasd.up.isDown;
+    const D = this.cursors.down.isDown  || this.wasd.down.isDown;
+    let pressed = null;
+    if (L) pressed = 'L';
+    if (R) pressed = 'R';
+    if (U) pressed = 'U';
+    if (D) pressed = 'D';
+    if (pressed) this.playerNextDir = pressed;
+
+    // ── Estado actual en grilla ───────────────────────────────────
+    const px = this.player.x, py = this.player.y;
+    const tc = Math.floor(px / TILE);
+    const tr = Math.floor(py / TILE);
+    const cx = tc * TILE + TILE/2;
+    const cy = tr * TILE + TILE/2;
+    const ALIGN = 5; // tolerancia para considerarlo centrado
+    const alignedX = Math.abs(px - cx) < ALIGN;
+    const alignedY = Math.abs(py - cy) < ALIGN;
+
+    const inBounds = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
+    const canMove = (dir) => {
+      let dc = 0, dr = 0;
+      if (dir === 'L') dc = -1;
+      else if (dir === 'R') dc = 1;
+      else if (dir === 'U') dr = -1;
+      else if (dir === 'D') dr = 1;
+      const nc = tc + dc, nr = tr + dr;
+      return inBounds(nc, nr) && this.mapData[nr][nc] !== T.WALL;
+    };
+
+    // ── Intentar adoptar la dirección buffereada ──────────────────
+    if (this.playerNextDir && this.playerNextDir !== this.playerDir) {
+      const n = this.playerNextDir;
+      const isReverse =
+        (n === 'L' && this.playerDir === 'R') ||
+        (n === 'R' && this.playerDir === 'L') ||
+        (n === 'U' && this.playerDir === 'D') ||
+        (n === 'D' && this.playerDir === 'U');
+      // Cambios perpendiculares requieren estar alineado con el eje perpendicular
+      const perpOk = (n === 'L' || n === 'R') ? alignedY : alignedX;
+      if ((isReverse || this.playerDir === null || perpOk) && canMove(n)) {
+        this.playerDir = n;
+        // Snap al centro del eje perpendicular → nunca te rozás con la esquina
+        if (n === 'L' || n === 'R') this.player.y = cy;
+        else this.player.x = cx;
+      }
+    }
+
+    // ── Si está alineado y el próximo tile es pared, frenar en seco ──
+    if (this.playerDir && alignedX && alignedY && !canMove(this.playerDir)) {
+      this.player.setPosition(cx, cy);
+      this.player.setVelocity(0, 0);
+      this.playerDir = null;
+    }
+
+    // ── Aplicar velocidad en un solo eje ──────────────────────────
     let vx = 0, vy = 0;
-    if (this.cursors.left.isDown  || this.wasd.left.isDown)  vx = -speed;
-    if (this.cursors.right.isDown || this.wasd.right.isDown) vx =  speed;
-    if (this.cursors.up.isDown    || this.wasd.up.isDown)    vy = -speed;
-    if (this.cursors.down.isDown  || this.wasd.down.isDown)  vy =  speed;
-    if (vx !== 0 && vy !== 0){ vx *= 0.707; vy *= 0.707; }
+    if (this.playerDir === 'L') vx = -speed;
+    else if (this.playerDir === 'R') vx = speed;
+    else if (this.playerDir === 'U') vy = -speed;
+    else if (this.playerDir === 'D') vy = speed;
     this.player.setVelocity(vx, vy);
 
     // Facing + bamboleo (no upside-down)
-    if (vx < -0.1) this.player.setFlipX(true);
-    else if (vx > 0.1) this.player.setFlipX(false);
+    if (this.playerDir === 'L') this.player.setFlipX(true);
+    else if (this.playerDir === 'R') this.player.setFlipX(false);
 
-    const moving = vx !== 0 || vy !== 0;
+    const moving = this.playerDir !== null;
     this.player.setRotation(moving ? Math.sin(time / 70) * 0.18 : 0);
+
+    // Countdown de ventaja en HUD
+    if (this._graceLabel){
+      const s = Math.max(0, Math.ceil((this._graceEnd - this.time.now) / 1000));
+      this._graceLabel.setText(`VENTAJA ${s}`);
+    }
 
     // Cana remaining + HUD bar
     if (this.canaActive){
@@ -1134,25 +1404,21 @@ class GameOverScene extends Phaser.Scene {
       color: isNew ? PALETTE.textAccent : PALETTE.textDim
     }).setOrigin(0.5);
 
-    const prompt = this.add.text(cx, cy + 90, 'ESPACIO para reintentar', {
+    const prompt = this.add.text(cx, cy + 90, 'ESPACIO para volver al MENÚ', {
       fontFamily: FONT, fontSize: '12px', color: PALETTE.textPrimary
     }).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
 
-    this.add.text(cx, cy + 130, 'ENTER para ir al menú', {
+    this.add.text(cx, cy + 130, 'Empezás de cero', {
       fontFamily: FONT, fontSize: '9px', color: PALETTE.textDim
     }).setOrigin(0.5);
 
     VFX.createCRT(this);
     bindGlobalKeys(this);
 
-    this.input.keyboard.once('keydown-SPACE', () => {
-      this.scene.start('Game', {
-        levelIndex: this.levelIndex, score: this.scoreAtLevelStart,
-        lives: 3, source: 'retry'
-      });
-    });
-    this.input.keyboard.once('keydown-ENTER', () => this.scene.start('Menu'));
+    const toMenu = () => this.scene.start('Menu');
+    this.input.keyboard.once('keydown-SPACE', toMenu);
+    this.input.keyboard.once('keydown-ENTER', toMenu);
   }
 }
 
