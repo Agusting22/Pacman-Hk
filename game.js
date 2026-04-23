@@ -97,6 +97,7 @@ const config = {
   width: W,
   height: H,
   backgroundColor: '#111',
+  physics: { default: 'arcade', arcade: { debug: false } },
   scene: [] // scenes added in later tasks
 };
 
@@ -294,5 +295,163 @@ class MenuScene extends Phaser.Scene {
   }
 }
 
-config.scene = [BootScene, MenuScene];
+class GameScene extends Phaser.Scene {
+  constructor() { super('Game'); }
+
+  init(data) {
+    this.levelIndex = data.levelIndex ?? 0;
+    this.score = data.score ?? 0;
+    this.lives = data.lives ?? 3;
+    this.level = LEVELS[this.levelIndex];
+    this.mapData = this.level.map.map(row => [...row]);
+  }
+
+  preload() {}
+
+  create() {
+    this.buildMap();
+    this.buildHUD();
+    this.spawnPlayer();
+    this.spawnEnemies();
+    this.setupInput();
+    this.scheduleAI();
+  }
+
+  buildMap() {
+    this.wallGroup = this.physics.add.staticGroup();
+    this.pesoGroup = this.physics.add.staticGroup();
+    this.canaGroup = this.physics.add.staticGroup();
+    this.exitGroup = this.physics.add.staticGroup();
+    this.pesoCount = 0;
+    this.chorroSpawns = [];
+    this.playerSpawn = { col: 1, row: 1 };
+
+    const g = this.add.graphics();
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const x = c * TILE + TILE / 2;
+        const y = r * TILE + TILE / 2;
+        const tile = this.mapData[r][c];
+
+        if (tile === T.WALL) {
+          g.fillStyle(0x2c3e50);
+          g.fillRect(c * TILE, r * TILE, TILE, TILE);
+          g.lineStyle(1, 0x1a252f);
+          g.strokeRect(c * TILE, r * TILE, TILE, TILE);
+          const wall = this.add.rectangle(x, y, TILE, TILE, 0x2c3e50);
+          this.physics.add.existing(wall, true);
+          this.wallGroup.add(wall);
+        } else if (tile === T.PESO) {
+          const dot = this.physics.add.image(x, y, 'peso').setScale(0.5);
+          this.pesoGroup.add(dot);
+          this.pesoCount++;
+        } else if (tile === T.CANA) {
+          const cana = this.physics.add.image(x, y, 'cana').setScale(0.8);
+          this.canaGroup.add(cana);
+        } else if (tile === T.EXIT) {
+          const ex = this.add.rectangle(x, y, TILE, TILE, 0xf39c12);
+          this.physics.add.existing(ex, true);
+          this.exitGroup.add(ex);
+        } else if (tile === T.SPAWN) {
+          this.playerSpawn = { col: c, row: r };
+        } else if (tile === T.CHORRO) {
+          this.chorroSpawns.push({ col: c, row: r });
+        }
+      }
+    }
+  }
+
+  buildHUD() {
+    this.add.rectangle(W / 2, 12, W, 24, 0x000000, 0.7).setScrollFactor(0).setDepth(10);
+
+    this.hudLives = this.add.text(8, 4, '', {
+      fontSize: '14px', fill: '#e74c3c', fontFamily: 'monospace'
+    }).setScrollFactor(0).setDepth(11);
+
+    this.hudScore = this.add.text(W / 2, 4, '', {
+      fontSize: '14px', fill: '#2ecc71', fontFamily: 'monospace'
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11);
+
+    this.hudLevel = this.add.text(W - 8, 4, '', {
+      fontSize: '14px', fill: '#f39c12', fontFamily: 'monospace'
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(11);
+
+    this.hudCana = this.add.text(W / 2, H / 2 - 40, '¡CANA!', {
+      fontSize: '36px', fill: '#2980b9', fontFamily: 'monospace', stroke: '#000', strokeThickness: 4
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(12).setVisible(false);
+
+    this.updateHUD();
+  }
+
+  updateHUD() {
+    this.hudLives.setText('♥'.repeat(this.lives));
+    this.hudScore.setText(`$ ${this.score}`);
+    this.hudLevel.setText(this.level.name.toUpperCase());
+  }
+
+  spawnPlayer() {
+    const x = this.playerSpawn.col * TILE + TILE / 2;
+    const y = this.playerSpawn.row * TILE + TILE / 2;
+    this.player = this.physics.add.image(x, y, 'banana');
+    this.player.setCollideWorldBounds(true);
+    this.physics.add.collider(this.player, this.wallGroup);
+
+    this.physics.add.overlap(this.player, this.pesoGroup, (player, peso) => {
+      peso.destroy();
+      this.pesoCount--;
+      this.score += 10;
+      this.updateHUD();
+    });
+
+    this.physics.add.overlap(this.player, this.canaGroup, (player, cana) => {
+      cana.destroy();
+      this.activateCana();
+    });
+
+    this.physics.add.overlap(this.player, this.exitGroup, () => {
+      this.levelComplete();
+    });
+  }
+
+  spawnEnemies() {}
+
+  setupInput() {
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.wasd = this.input.keyboard.addKeys({
+      up: Phaser.Input.Keyboard.KeyCodes.W,
+      down: Phaser.Input.Keyboard.KeyCodes.S,
+      left: Phaser.Input.Keyboard.KeyCodes.A,
+      right: Phaser.Input.Keyboard.KeyCodes.D
+    });
+    this._moveDir = { x: 0, y: 0 };
+  }
+
+  scheduleAI() {}
+
+  activateCana() {}
+  levelComplete() {}
+
+  update() {
+    if (!this.player || !this.player.active) return;
+
+    const speed = 120;
+    let vx = 0, vy = 0;
+
+    if (this.cursors.left.isDown || this.wasd.left.isDown)  vx = -speed;
+    if (this.cursors.right.isDown || this.wasd.right.isDown) vx = speed;
+    if (this.cursors.up.isDown || this.wasd.up.isDown)      vy = -speed;
+    if (this.cursors.down.isDown || this.wasd.down.isDown)  vy = speed;
+
+    if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707; }
+
+    this.player.setVelocity(vx, vy);
+
+    if (vx !== 0 || vy !== 0) {
+      this.player.setRotation(Math.atan2(vy, vx) + Math.PI / 2);
+    }
+  }
+}
+
+config.scene = [BootScene, MenuScene, GameScene];
 new Phaser.Game(config);
