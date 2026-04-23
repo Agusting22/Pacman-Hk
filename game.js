@@ -414,7 +414,27 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  spawnEnemies() {}
+  spawnEnemies() {
+    this.chorros = [];
+    this.ai = new EnemyAI(this.mapData, COLS, ROWS);
+    this.canaActive = false;
+
+    const spawns = this.chorroSpawns.slice(0, this.level.chorroCount);
+    spawns.forEach((spawn) => {
+      const x = spawn.col * TILE + TILE / 2;
+      const y = spawn.row * TILE + TILE / 2;
+      const chorro = this.physics.add.image(x, y, 'chorro')
+        .setDisplaySize(TILE, TILE);
+      this.physics.add.collider(chorro, this.wallGroup);
+
+      this.physics.add.overlap(chorro, this.player, () => {
+        if (this.canaActive) return;
+        this.loseLife();
+      });
+
+      this.chorros.push(chorro);
+    });
+  }
 
   setupInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -427,10 +447,110 @@ class GameScene extends Phaser.Scene {
     this._moveDir = { x: 0, y: 0 };
   }
 
-  scheduleAI() {}
+  scheduleAI() {
+    this.aiTimer = this.time.addEvent({
+      delay: this.level.aiInterval,
+      callback: this.moveEnemies,
+      callbackScope: this,
+      loop: true
+    });
+  }
 
-  activateCana() {}
-  levelComplete() {}
+  moveEnemies() {
+    if (!this.player || !this.player.active) return;
+
+    const px = Math.floor(this.player.x / TILE);
+    const py = Math.floor(this.player.y / TILE);
+
+    this.chorros.forEach(chorro => {
+      if (!chorro.active) return;
+      const cx = Math.floor(chorro.x / TILE);
+      const cy = Math.floor(chorro.y / TILE);
+      const step = this.ai.nextStep(cx, cy, px, py, this.canaActive);
+      if (!step) return;
+
+      const [nc, nr] = step;
+      const tx = nc * TILE + TILE / 2;
+      const ty = nr * TILE + TILE / 2;
+      const speed = this.level.chorroSpeed;
+      const dx = tx - chorro.x;
+      const dy = ty - chorro.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 2) {
+        chorro.setVelocity((dx / dist) * speed, (dy / dist) * speed);
+      } else {
+        chorro.setVelocity(0, 0);
+        chorro.setPosition(tx, ty);
+      }
+    });
+  }
+
+  activateCana() {
+    this.canaActive = true;
+
+    this.chorros.forEach(c => c.setTexture('chorro-scared'));
+
+    this.hudCana.setVisible(true);
+    this.tweens.add({
+      targets: this.hudCana,
+      alpha: 0,
+      duration: 400,
+      yoyo: true,
+      repeat: 4,
+      onComplete: () => this.hudCana.setVisible(false).setAlpha(1)
+    });
+
+    this.time.delayedCall(this.level.canaPowerDuration, () => {
+      this.canaActive = false;
+      this.chorros.forEach(c => { if (c.active) c.setTexture('chorro'); });
+    });
+  }
+
+  loseLife() {
+    if (this._invincible) return;
+    this._invincible = true;
+    this.lives--;
+    this.updateHUD();
+
+    if (this.lives <= 0) {
+      this.scene.start('GameOver', { levelIndex: this.levelIndex });
+      return;
+    }
+
+    this.tweens.add({
+      targets: this.player,
+      alpha: 0,
+      duration: 150,
+      yoyo: true,
+      repeat: 5,
+      onComplete: () => {
+        this.player.setAlpha(1);
+        this.player.setPosition(
+          this.playerSpawn.col * TILE + TILE / 2,
+          this.playerSpawn.row * TILE + TILE / 2
+        );
+        this._invincible = false;
+      }
+    });
+  }
+
+  levelComplete() {
+    if (this._transitioning) return;
+    this._transitioning = true;
+    this.score += 500;
+
+    const next = this.levelIndex + 1;
+    this.aiTimer.remove();
+
+    this.cameras.main.flash(500, 245, 176, 65);
+    this.time.delayedCall(600, () => {
+      if (next < LEVELS.length) {
+        this.scene.start('Game', { levelIndex: next, score: this.score, lives: this.lives });
+      } else {
+        this.scene.start('Win', { score: this.score });
+      }
+    });
+  }
 
   update() {
     if (!this.player || !this.player.active) return;
