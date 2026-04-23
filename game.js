@@ -149,6 +149,99 @@ function generateTextures(scene) {
   g.destroy();
 }
 
+class EnemyAI {
+  /**
+   * @param {number[][]} map - tile grid (T.WALL = impassable)
+   * @param {number} cols
+   * @param {number} rows
+   */
+  constructor(map, cols, rows) {
+    this.map = map;
+    this.cols = cols;
+    this.rows = rows;
+  }
+
+  /**
+   * Returns next [col, row] step toward target, or null if already there.
+   * @param {number} fromCol
+   * @param {number} fromRow
+   * @param {number} toCol
+   * @param {number} toRow
+   * @param {boolean} flee - if true, move AWAY from target
+   */
+  nextStep(fromCol, fromRow, toCol, toRow, flee = false) {
+    if (fromCol === toCol && fromRow === toRow) return null;
+
+    const goal = flee ? this._fleeTarget(fromCol, fromRow, toCol, toRow) : [toCol, toRow];
+    const path = this._bfs(fromCol, fromRow, goal[0], goal[1]);
+    if (!path || path.length < 2) return null;
+    return path[1]; // first step after origin
+  }
+
+  _bfs(sc, sr, tc, tr) {
+    const key = (c, r) => `${c},${r}`;
+    const queue = [[sc, sr]];
+    const visited = new Set([key(sc, sr)]);
+    const parent = new Map();
+
+    while (queue.length) {
+      const [c, r] = queue.shift();
+      if (c === tc && r === tr) {
+        // Reconstruct path
+        const path = [];
+        let cur = key(c, r);
+        while (cur) {
+          const [pc, pr] = cur.split(',').map(Number);
+          path.unshift([pc, pr]);
+          cur = parent.get(cur);
+        }
+        return path;
+      }
+      for (const [dc, dr] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+        const nc = c + dc, nr = r + dr;
+        const k = key(nc, nr);
+        if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows
+            && this.map[nr][nc] !== T.WALL && !visited.has(k)) {
+          visited.add(k);
+          parent.set(k, key(c, r));
+          queue.push([nc, nr]);
+        }
+      }
+    }
+    return null; // no path
+  }
+
+  /** Pick the tile farthest from the player using BFS distances */
+  _fleeTarget(fc, fr, pc, pr) {
+    const key = (c, r) => `${c},${r}`;
+    const dist = new Map();
+    const queue = [[pc, pr, 0]];
+    dist.set(key(pc, pr), 0);
+
+    while (queue.length) {
+      const [c, r, d] = queue.shift();
+      for (const [dc, dr] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+        const nc = c + dc, nr = r + dr;
+        const k = key(nc, nr);
+        if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows
+            && this.map[nr][nc] !== T.WALL && !dist.has(k)) {
+          dist.set(k, d + 1);
+          queue.push([nc, nr, d + 1]);
+        }
+      }
+    }
+
+    // Find reachable tile farthest from player within 8 tiles of chorro
+    let best = null, bestDist = -1;
+    for (const [k, d] of dist.entries()) {
+      const [c, r] = k.split(',').map(Number);
+      const chorroD = Math.abs(c - fc) + Math.abs(r - fr);
+      if (chorroD <= 8 && d > bestDist) { bestDist = d; best = [c, r]; }
+    }
+    return best || [fc, fr];
+  }
+}
+
 class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
 
