@@ -1,0 +1,63 @@
+<h2>¿Qué tipo de juego hacemos?</h2>
+<p class="subtitle">Los 3 enfoques tienen potencial para la hackathon — elegí el que más te llama</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#111;padding:20px;font-family:monospace;font-size:13px;color:#0f0;line-height:1.4">
+      <div style="text-align:center;margin-bottom:8px;color:#ff0;font-size:16px">⬛🟡⬛⬛⬛⬛⬛⬛</div>
+      <div style="text-align:center">⬛⬛⬛🔵⬛⬛⬛⬛</div>
+      <div style="text-align:center">⬛⬛⬛⬛⬛🔵⬛⬛</div>
+      <div style="text-align:center">⬛⬛⬛⬛⬛⬛⬛⬛</div>
+      <div style="text-align:center;margin-top:4px;color:#888">🏠 PALERMO → 🚇 SUBTE</div>
+      <div style="display:flex;justify-content:center;gap:16px;margin-top:8px">
+        <span style="color:#ffff00">● Medialunas</span>
+        <span style="color:#ff4444">👮 Chorro x3</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — PacMan Porteño</h3>
+      <p>Laberinto de calles de Buenos Aires. Comés facturas/medialunas para ganar puntos, escapás de chorros que te persiguen. Llegás al subte = ganás. Usa la imagen de frente. <strong>Lo más cercano a tu idea original.</strong></p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a0a2e;padding:20px;font-family:monospace;font-size:14px;color:#fff;line-height:1.6">
+      <div style="display:flex;gap:8px;align-items:flex-end;justify-content:center">
+        <div style="width:30px;height:60px;background:#c8a;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:center">🏢</div>
+        <div style="width:30px;height:80px;background:#a8c;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:center">🏢</div>
+        <div style="width:40px;height:40px;background:#aac;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:center">🏪</div>
+        <div style="width:30px;height:70px;background:#caa;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:center">🏢</div>
+      </div>
+      <div style="background:#555;height:20px;display:flex;align-items:center;padding:0 8px;font-size:11px">
+        🏃 → → → 🦹 (persiguiendo)
+      </div>
+      <div style="text-align:center;margin-top:6px;font-size:11px;color:#aaa">CORRÉS por Corrientes hasta el colectivo 🚌</div>
+    </div>
+    <div class="card-body">
+      <h3>B — Corriendo por Corrientes</h3>
+      <p>Endless runner lateral. Corrés por Av. Corrientes, saltás obstáculos (pozos, vendedores ambulantes), el chorro te persigue desde atrás. Llegás al colectivo = nivel superado.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d1b2a;padding:20px;text-align:center;font-family:monospace">
+      <div style="font-size:28px;margin-bottom:8px">🗺️</div>
+      <div style="color:#7fdbff;font-size:12px;line-height:1.6">
+        <div>CONGRESO ──── ONCE ──── RETIRO</div>
+        <div style="margin:4px 0">│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│</div>
+        <div>SAN TELMO ── MICROCENTRO ─ PALERMO</div>
+        <div style="margin:4px 0">│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│</div>
+        <div>LA BOCA ─────────────── RECOLETA</div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#ffd700">🟡 = vos &nbsp; 🔴 = chorro &nbsp; 🚇 = meta</div>
+    </div>
+    <div class="card-body">
+      <h3>C — Mapa de Buenos Aires</h3>
+      <p>Vista top-down del mapa real de CABA. Navegás barrios, evitás zonas peligrosas, gestionás "miedo" y "plata". Más complejo pero más original. Mayor riesgo en 50KB.</p>
+    </div>
+  </div>
+
+</div>
+
+<p style="margin-top:20px;color:#888;font-size:13px">💡 Mi recomendación: <strong>A (PacMan Porteño)</strong> — es el más ejecutable, vistoso y temáticamente claro para una hackathon. Podés usar la imagen del chorro directamente como sprite enemigo.</p>

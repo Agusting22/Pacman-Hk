@@ -1,0 +1,5 @@
+{"type":"server-started","port":58417,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:58417","screen_dir":"/home/agusg/juego-hackathon/.superpowers/brainstorm/5500-1776936957/content","state_dir":"/home/agusg/juego-hackathon/.superpowers/brainstorm/5500-1776936957/state"}
+{"type":"screen-added","file":"/home/agusg/juego-hackathon/.superpowers/brainstorm/5500-1776936957/content/concept.html"}
+{"type":"screen-added","file":"/home/agusg/juego-hackathon/.superpowers/brainstorm/5500-1776936957/content/waiting-1.html"}
+{"type":"screen-added","file":"/home/agusg/juego-hackathon/.superpowers/brainstorm/5500-1776936957/content/design.html"}
+{"type":"server-stopped","reason":"owner process exited"}

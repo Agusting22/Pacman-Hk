@@ -1,0 +1,139 @@
+<h2>Diseño: PacMan Porteño — "Plátano en Peligro"</h2>
+<p class="subtitle">Hacé click en cada sección para confirmarla, o avisame en el terminal si querés cambiar algo</p>
+
+<div class="section">
+  <h3>🎮 Core Loop</h3>
+  <div class="mockup">
+    <div class="mockup-header">Flujo de una vida</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:13px;line-height:2">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="background:#f5c518;color:#000;padding:2px 8px;border-radius:4px">🍌 Banana aparece</span>
+        <span>→</span>
+        <span style="background:#2ecc71;color:#000;padding:2px 8px;border-radius:4px">💰 Recogés pesos</span>
+        <span>→</span>
+        <span style="background:#e74c3c;color:#fff;padding:2px 8px;border-radius:4px">🦹 Chorro te persigue</span>
+        <span>→</span>
+        <span style="background:#3498db;color:#fff;padding:2px 8px;border-radius:4px">👮 Agarrás una cana</span>
+        <span>→</span>
+        <span style="background:#9b59b6;color:#fff;padding:2px 8px;border-radius:4px">🦹 Chorro huye 5s</span>
+        <span>→</span>
+        <span style="background:#1abc9c;color:#000;padding:2px 8px;border-radius:4px">🚇 Llegás al subte = WIN</span>
+      </div>
+      <div style="margin-top:12px;color:#888;font-size:12px">
+        ⚠️ Si el chorro te toca → perdés una vida (empezás con 3). Sin vidas → Game Over.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🗺️ Los 3 Niveles</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Nivel 1 — Palermo</div>
+      <div class="mockup-body" style="font-family:monospace;font-size:11px;line-height:1.4;color:#7fdbff">
+        <div>████████████████</div>
+        <div>█ · · · · · · █</div>
+        <div>█ · ██ · ██ · █</div>
+        <div>█ · · · · · · █</div>
+        <div>█ ██ · ██ · ██ █</div>
+        <div>█ · · · · · · █</div>
+        <div>███████🚇███████</div>
+        <div style="margin-top:6px;color:#aaa">• 2 chorros<br>• 3 canas en el mapa<br>• Mapa abierto, fácil</div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Nivel 2 — Once</div>
+      <div class="mockup-body" style="font-family:monospace;font-size:11px;line-height:1.4;color:#f39c12">
+        <div>████████████████</div>
+        <div>█ · █ · · █ · █</div>
+        <div>█ · · █ █ · · █</div>
+        <div>█ █ · · · · █ █</div>
+        <div>█ · █ · · █ · █</div>
+        <div>█ · · · · · · █</div>
+        <div>███████🚌███████</div>
+        <div style="margin-top:6px;color:#aaa">• 3 chorros<br>• 2 canas<br>• Más obstáculos</div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Nivel 3 — La Boca</div>
+      <div class="mockup-body" style="font-family:monospace;font-size:11px;line-height:1.4;color:#e74c3c">
+        <div>████████████████</div>
+        <div>█·█·····█·····█</div>
+        <div>█·█·███·█·███·█</div>
+        <div>█·····█·····█·█</div>
+        <div>█·███·█·███·█·█</div>
+        <div>█·············█</div>
+        <div>███████🚇███████</div>
+        <div style="margin-top:6px;color:#aaa">• 4 chorros<br>• 1 cana<br>• Laberinto denso</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🎨 Gráficos (sin assets externos)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Cómo se dibuja cada personaje</div>
+    <div class="mockup-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px">
+      <div>
+        <div style="font-size:28px;text-align:center">🍌</div>
+        <strong>Banana (vos)</strong><br>
+        <span style="color:#aaa">Phaser Graphics: elipse amarilla con curva. Simple, reconocible, 0 KB.</span>
+      </div>
+      <div>
+        <div style="font-size:28px;text-align:center">📸</div>
+        <strong>Chorro (enemigo)</strong><br>
+        <span style="color:#aaa">hackathon.png local, escalado a 32×32px. Cargado por Phaser asset loader.</span>
+      </div>
+      <div>
+        <div style="font-size:28px;text-align:center">👮</div>
+        <strong>Cana (power-up)</strong><br>
+        <span style="color:#aaa">Phaser Graphics: círculo azul con "C" blanca. 0 KB.</span>
+      </div>
+      <div>
+        <div style="font-size:28px;text-align:center">💰</div>
+        <strong>Pesos (puntos)</strong><br>
+        <span style="color:#aaa">Phaser Graphics: círculo verde con "$". Miles de ellos, 0 KB extra.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>⚙️ Stack Técnico</h3>
+  <div class="mockup">
+    <div class="mockup-header">Arquitectura del proyecto</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:12px;line-height:1.8;color:#2ecc71">
+      <div>📁 juego-hackathon/</div>
+      <div>&nbsp;&nbsp;📄 index.html &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← Entry point, carga Phaser CDN</div>
+      <div>&nbsp;&nbsp;📄 game.js &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← Todo el juego (~30-40KB)</div>
+      <div>&nbsp;&nbsp;🖼️ hackathon.png &nbsp;&nbsp;&nbsp;&nbsp;← El chorro (asset local)</div>
+      <div style="margin-top:8px;color:#f39c12">Phaser 3 → CDN (no cuenta para los 50KB)</div>
+      <div style="margin-top:4px;color:#aaa">game.js contiene: Scenes (Menu, Nivel1, Nivel2, Nivel3, GameOver, Win), lógica de AI chorros (pathfinding simple BFS), generación de mapas, HUD</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🏆 Pantallas del juego</h3>
+  <div class="mockup">
+    <div class="mockup-header">Flujo completo</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:12px;text-align:center;line-height:2.2">
+      <span style="background:#333;padding:4px 12px;border-radius:4px">🍌 MENÚ<br><small style="color:#aaa">Nombre del juego + Start</small></span>
+      <span> → </span>
+      <span style="background:#1a3;padding:4px 12px;border-radius:4px">🗺️ NIVEL 1<br><small>Palermo</small></span>
+      <span> → </span>
+      <span style="background:#a70;padding:4px 12px;border-radius:4px">🗺️ NIVEL 2<br><small>Once</small></span>
+      <span> → </span>
+      <span style="background:#a33;padding:4px 12px;border-radius:4px">🗺️ NIVEL 3<br><small>La Boca</small></span>
+      <span> → </span>
+      <span style="background:#228;padding:4px 12px;border-radius:4px">🏆 WIN<br><small>"Llegaste al subte"</small></span>
+      <div style="margin-top:12px">
+        <span style="background:#500;padding:4px 12px;border-radius:4px">💀 GAME OVER → reinicia el nivel</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:24px;color:#888;font-size:12px">¿Te parece bien este diseño? Confirmá en el terminal o pedí cambios en cualquier sección.</p>
