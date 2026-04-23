@@ -149,4 +149,17 @@ function generateTextures(scene) {
   g.destroy();
 }
 
+class BootScene extends Phaser.Scene {
+  constructor() { super('Boot'); }
+
+  preload() {
+    this.load.image('chorro', 'hackathon.png');
+  }
+
+  create() {
+    generateTextures(this);
+    this.scene.start('Menu');
+  }
+}
+
 // Instantiated after all scenes are defined (Task 6)
