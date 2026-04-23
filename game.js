@@ -573,5 +573,73 @@ class GameScene extends Phaser.Scene {
   }
 }
 
-config.scene = [BootScene, MenuScene, GameScene];
+class GameOverScene extends Phaser.Scene {
+  constructor() { super('GameOver'); }
+
+  init(data) {
+    this.levelIndex = data.levelIndex ?? 0;
+  }
+
+  create() {
+    const cx = W / 2, cy = H / 2;
+    this.add.rectangle(cx, cy, W, H, 0x1a0000);
+
+    this.add.text(cx, cy - 60, '¡TE AFANARON!', {
+      fontSize: '42px', fill: '#e74c3c', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    this.add.text(cx, cy, 'El chorro se llevó todo.', {
+      fontSize: '16px', fill: '#aaaaaa', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    const prompt = this.add.text(cx, cy + 70, 'ESPACIO para reintentar', {
+      fontSize: '16px', fill: '#ffffff', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    this.tweens.add({ targets: prompt, alpha: 0, duration: 600, yoyo: true, repeat: -1 });
+
+    this.input.keyboard.once('keydown-SPACE', () => {
+      this.scene.start('Game', { levelIndex: this.levelIndex, score: 0, lives: 3 });
+    });
+  }
+}
+
+class WinScene extends Phaser.Scene {
+  constructor() { super('Win'); }
+
+  init(data) {
+    this.finalScore = data.score ?? 0;
+  }
+
+  create() {
+    const cx = W / 2, cy = H / 2;
+    this.add.rectangle(cx, cy, W, H, 0x001a00);
+
+    this.add.image(cx, cy - 90, 'banana').setScale(4);
+
+    this.add.text(cx, cy - 20, '¡LLEGASTE AL SUBTE!', {
+      fontSize: '32px', fill: '#2ecc71', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    this.add.text(cx, cy + 30, `Puntaje final: $${this.finalScore}`, {
+      fontSize: '22px', fill: '#f5c518', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    this.add.text(cx, cy + 70, 'Salvaste los pesos. Por ahora.', {
+      fontSize: '13px', fill: '#888888', fontFamily: 'monospace', fontStyle: 'italic'
+    }).setOrigin(0.5);
+
+    const prompt = this.add.text(cx, cy + 120, 'ESPACIO para jugar de nuevo', {
+      fontSize: '15px', fill: '#ffffff', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    this.tweens.add({ targets: prompt, alpha: 0, duration: 600, yoyo: true, repeat: -1 });
+
+    this.input.keyboard.once('keydown-SPACE', () => {
+      this.scene.start('Menu');
+    });
+  }
+}
+
+config.scene = [BootScene, MenuScene, GameScene, GameOverScene, WinScene];
 new Phaser.Game(config);
