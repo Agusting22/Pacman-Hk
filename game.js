@@ -100,4 +100,53 @@ const config = {
   scene: [] // scenes added in later tasks
 };
 
+function generateTextures(scene) {
+  const g = scene.make.graphics({ x: 0, y: 0, add: false });
+
+  // ── Banana (player) 32×32 ──
+  g.clear();
+  g.fillStyle(0xf5c518);
+  g.fillEllipse(16, 20, 20, 26);
+  g.fillStyle(0xc8a000);
+  g.fillRect(14, 4, 4, 10);
+  g.generateTexture('banana', TILE, TILE);
+
+  // ── Peso (collectible dot) 32×32 ──
+  g.clear();
+  g.fillStyle(0x2ecc71);
+  g.fillCircle(16, 16, 6);
+  g.fillStyle(0x000000);
+  g.fillRect(14, 10, 4, 12);
+  g.fillRect(11, 12, 10, 3);
+  g.fillRect(11, 17, 10, 3);
+  g.generateTexture('peso', TILE, TILE);
+
+  // ── Cana power-up 32×32 ──
+  g.clear();
+  g.fillStyle(0x2980b9);
+  g.fillCircle(16, 16, 13);
+  g.fillStyle(0xffffff);
+  g.fillRect(13, 9, 3, 14);
+  g.fillRect(13, 9, 9, 3);
+  g.fillRect(13, 20, 9, 3);
+  g.generateTexture('cana', TILE, TILE);
+
+  // ── Chorro scared mode 32×32 ──
+  g.clear();
+  g.fillStyle(0x888888, 0.6);
+  g.fillRect(4, 4, 24, 24);
+  g.fillStyle(0xffffff);
+  g.fillRect(9, 10, 5, 5);
+  g.fillRect(18, 10, 5, 5);
+  g.generateTexture('chorro-scared', TILE, TILE);
+
+  // ── Exit tile 64×32 ──
+  g.clear();
+  g.fillStyle(0xf39c12);
+  g.fillRect(0, 0, TILE * 2, TILE);
+  g.generateTexture('exit', TILE * 2, TILE);
+
+  g.destroy();
+}
+
 // Instantiated after all scenes are defined (Task 6)
