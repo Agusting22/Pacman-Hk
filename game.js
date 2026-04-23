@@ -162,4 +162,44 @@ class BootScene extends Phaser.Scene {
   }
 }
 
-// Instantiated after all scenes are defined (Task 6)
+class MenuScene extends Phaser.Scene {
+  constructor() { super('Menu'); }
+
+  create() {
+    const cx = W / 2, cy = H / 2;
+
+    this.add.rectangle(cx, cy, W, H, 0x111111);
+    this.add.image(cx, cy - 80, 'banana').setScale(3);
+
+    this.add.text(cx, cy - 20, '🍌 PLÁTANO EN PELIGRO', {
+      fontSize: '28px', fill: '#f5c518', fontFamily: 'monospace', align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(cx, cy + 20, 'Escapá del chorro. Llegá al subte.', {
+      fontSize: '14px', fill: '#aaaaaa', fontFamily: 'monospace', align: 'center'
+    }).setOrigin(0.5);
+
+    const prompt = this.add.text(cx, cy + 80, 'PRESIONÁ ESPACIO', {
+      fontSize: '18px', fill: '#ffffff', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: prompt,
+      alpha: 0,
+      duration: 600,
+      yoyo: true,
+      repeat: -1
+    });
+
+    this.add.text(cx, H - 24, 'Platanus Hackathon 2026', {
+      fontSize: '11px', fill: '#555555', fontFamily: 'monospace'
+    }).setOrigin(0.5);
+
+    this.input.keyboard.once('keydown-SPACE', () => {
+      this.scene.start('Game', { levelIndex: 0, score: 0, lives: 3 });
+    });
+  }
+}
+
+config.scene = [BootScene, MenuScene];
+new Phaser.Game(config);
