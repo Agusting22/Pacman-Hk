@@ -75,7 +75,7 @@ const LEVELS = [
   { name: 'La Boca', exit: 'Subte', chorroCount: 4, chorroSpeed: 110, aiInterval: 320, canaPowerDuration: 6000, map: [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     [1,5,2,1,2,2,1,2,2,1,1,2,2,1,2,2,1,2,2,1],
-    [1,2,2,1,2,1,1,2,1,1,1,1,2,1,1,2,1,1,2,1],
+    [1,2,2,1,2,1,1,2,1,1,1,1,2,1,1,2,1,2,2,1],
     [1,1,2,2,2,1,2,2,2,2,2,2,2,2,1,2,2,2,1,1],
     [1,1,1,1,2,1,2,1,1,1,1,1,1,2,1,2,1,1,1,1],
     [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
@@ -93,15 +93,39 @@ const LEVELS = [
 ];
 
 // ─── STORE ──────────────────────────────────────────────────────────────────
+// Cache síncrono respaldado por window.platanusArcadeStorage (async).
+// Persiste high score / mute / CRT en el arcade, con fallback a localStorage
+// para testing local cuando no hay puente del cabinet.
 const Store = {
-  _get(k, d){ try { const v = localStorage.getItem(k); return v==null?d:v; } catch { return d; } },
-  _set(k, v){ try { localStorage.setItem(k, v); } catch {} },
+  _cache: {},
+  _api: null,
+  _keys: ['pp.highscore', 'pp.mute', 'pp.crt', 'pp.np'],
+  async init(){
+    this._api = (typeof window !== 'undefined' && window.platanusArcadeStorage) || null;
+    for (const k of this._keys) {
+      let v = null;
+      if (this._api) {
+        try { const r = await this._api.get(k); if (r && r.found) v = r.value; } catch {}
+      } else {
+        try { const raw = localStorage.getItem(k); if (raw != null) v = raw; } catch {}
+      }
+      if (v != null) this._cache[k] = v;
+    }
+  },
+  _get(k, d){ return k in this._cache ? this._cache[k] : d; },
+  _set(k, v){
+    this._cache[k] = v;
+    if (this._api) { try { this._api.set(k, v); } catch {} }
+    else { try { localStorage.setItem(k, v); } catch {} }
+  },
   getHighScore(){ return parseInt(this._get('pp.highscore','0'), 10) || 0; },
   setHighScore(n){ if (n > this.getHighScore()) this._set('pp.highscore', String(n)); },
   getMuted(){ return this._get('pp.mute','0') === '1'; },
   setMuted(b){ this._set('pp.mute', b ? '1' : '0'); },
   getCRT(){ return this._get('pp.crt','1') === '1'; },
-  setCRT(b){ this._set('pp.crt', b ? '1' : '0'); }
+  setCRT(b){ this._set('pp.crt', b ? '1' : '0'); },
+  getNumPlayers(){ const n = parseInt(this._get('pp.np','1'), 10); return n === 2 ? 2 : 1; },
+  setNumPlayers(n){ this._set('pp.np', n === 2 ? '2' : '1'); }
 };
 
 // ─── AUDIO ──────────────────────────────────────────────────────────────────
@@ -527,6 +551,42 @@ class EnemyAI {
   constructor(map, cols, rows){
     this.map = map; this.cols = cols; this.rows = rows;
   }
+  // Línea de visión: misma fila o columna, sin paredes entre medio, hasta maxDist tiles
+  hasLOS(ec, er, pc, pr, maxDist=9){
+    if (er === pr){
+      const d = Math.abs(ec - pc); if (d > maxDist) return false;
+      const minC = Math.min(ec,pc)+1, maxC = Math.max(ec,pc);
+      for (let c = minC; c < maxC; c++) if (this.map[er][c] === T.WALL) return false;
+      return true;
+    }
+    if (ec === pc){
+      const d = Math.abs(er - pr); if (d > maxDist) return false;
+      const minR = Math.min(er,pr)+1, maxR = Math.max(er,pr);
+      for (let r = minR; r < maxR; r++) if (this.map[r][ec] === T.WALL) return false;
+      return true;
+    }
+    return false;
+  }
+  // Vagabundeo: continúa en la misma dirección con prob. 0.65, gira al llegar a intersección
+  nextStepWander(fc, fr, prevDir){
+    const DIRS = [[0,-1],[0,1],[-1,0],[1,0]];
+    const valid = DIRS.filter(([dc,dr]) => {
+      const nc=fc+dc, nr=fr+dr;
+      return nc>=0&&nc<this.cols&&nr>=0&&nr<this.rows&&this.map[nr][nc]!==T.WALL;
+    });
+    if (!valid.length) return null;
+    const noRev = prevDir
+      ? valid.filter(([dc,dr]) => !(dc===-prevDir[0]&&dr===-prevDir[1]))
+      : valid;
+    const pool = noRev.length ? noRev : valid;
+    // continuar recto si es posible y la suerte lo dicta
+    if (prevDir){
+      const straight = valid.find(([dc,dr]) => dc===prevDir[0]&&dr===prevDir[1]);
+      if (straight && Math.random() < 0.65) return [fc+straight[0], fr+straight[1]];
+    }
+    const [dc,dr] = pool[Math.floor(Math.random()*pool.length)];
+    return [fc+dc, fr+dr];
+  }
   nextStep(fc, fr, tc, tr, flee=false){
     if (fc === tc && fr === tr) return null;
     const goal = flee ? this._fleeTarget(fc, fr, tc, tr) : [tc, tr];
@@ -654,7 +714,9 @@ class MenuScene extends Phaser.Scene {
 
     // Opciones
     this.selIdx = 0;
+    this.numPlayers = Store.getNumPlayers();
     this.options = [
+      { type: 'toggle' },
       { label: 'CAMPAÑA COMPLETA',      levelIndex: 0, mode: 'campaign' },
       { label: 'NIVEL 1 — PALERMO',     levelIndex: 0, mode: 'single'   },
       { label: 'NIVEL 2 — ONCE',        levelIndex: 1, mode: 'single'   },
@@ -666,7 +728,16 @@ class MenuScene extends Phaser.Scene {
       const t = this.add.text(cx, startY + i * gap, '', {
         fontFamily: FONT, fontSize: '13px', color: PALETTE.textPrimary
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      t.on('pointerdown', () => this.launch(i));
+      t.on('pointerdown', () => {
+        if (o.type === 'toggle'){
+          this.numPlayers = this.numPlayers === 1 ? 2 : 1;
+          Store.setNumPlayers(this.numPlayers);
+          this.refresh();
+          Audio.sfx('menu');
+        } else {
+          this.launch(i);
+        }
+      });
       t.on('pointerover', () => { this.selIdx = i; this.refresh(); Audio.sfx('menu'); });
       return t;
     });
@@ -675,10 +746,7 @@ class MenuScene extends Phaser.Scene {
     this.add.text(cx, H - 64, '↑↓ ELEGIR   ENTER/ESPACIO JUGAR', {
       fontFamily: FONT, fontSize: '8px', color: PALETTE.textDim
     }).setOrigin(0.5);
-    this.add.text(cx, H - 46, 'FLECHAS/WASD MOVER  ·  ESC PAUSA', {
-      fontFamily: FONT, fontSize: '8px', color: PALETTE.textDim
-    }).setOrigin(0.5);
-    this.add.text(cx, H - 30, 'M MUTE  ·  C CRT', {
+    this.add.text(cx, H - 46, 'JOYSTICK MOVER  ·  START PAUSA', {
       fontFamily: FONT, fontSize: '8px', color: PALETTE.textDim
     }).setOrigin(0.5);
     this.add.text(cx, H - 12, 'Platanus Hackathon 2026', {
@@ -692,28 +760,56 @@ class MenuScene extends Phaser.Scene {
     this.input.keyboard.once('keydown', () => Audio.resume());
 
     const n = this.options.length;
+    const togglePlayers = () => {
+      this.numPlayers = this.numPlayers === 1 ? 2 : 1;
+      Store.setNumPlayers(this.numPlayers);
+      this.refresh();
+      Audio.sfx('menu');
+    };
     this.input.keyboard.on('keydown-UP',    () => { this.selIdx = (this.selIdx - 1 + n) % n; this.refresh(); Audio.sfx('menu'); });
     this.input.keyboard.on('keydown-DOWN',  () => { this.selIdx = (this.selIdx + 1) % n;     this.refresh(); Audio.sfx('menu'); });
     this.input.keyboard.on('keydown-W',     () => { this.selIdx = (this.selIdx - 1 + n) % n; this.refresh(); Audio.sfx('menu'); });
     this.input.keyboard.on('keydown-S',     () => { this.selIdx = (this.selIdx + 1) % n;     this.refresh(); Audio.sfx('menu'); });
+    this.input.keyboard.on('keydown-LEFT',  () => { if (this.options[this.selIdx].type === 'toggle') togglePlayers(); });
+    this.input.keyboard.on('keydown-RIGHT', () => { if (this.options[this.selIdx].type === 'toggle') togglePlayers(); });
+    this.input.keyboard.on('keydown-A',     () => { if (this.options[this.selIdx].type === 'toggle') togglePlayers(); });
+    this.input.keyboard.on('keydown-D',     () => { if (this.options[this.selIdx].type === 'toggle') togglePlayers(); });
     this.input.keyboard.on('keydown-ENTER', () => this.launch(this.selIdx));
     this.input.keyboard.on('keydown-SPACE', () => this.launch(this.selIdx));
   }
   refresh(){
     this.labels.forEach((l, i) => {
+      const o = this.options[i];
       const selected = i === this.selIdx;
+      const label = o.type === 'toggle'
+        ? `JUGADORES ◄ ${this.numPlayers}P ► ${this.numPlayers === 2 ? '(WASD+FLECHAS)' : '(WASD/FLECHAS)'}`
+        : o.label;
       l.setColor(selected ? PALETTE.textAccent : PALETTE.textPrimary);
-      l.setText((selected ? '> ' : '  ') + this.options[i].label + (selected ? ' <' : '  '));
+      l.setText((selected ? '> ' : '  ') + label + (selected ? ' <' : '  '));
     });
   }
   launch(i){
     Audio.sfx('menu');
     const o = this.options[i];
+    if (o.type === 'toggle'){
+      // Enter/Space en la fila de toggle: arrancamos campaña con el modo actual
+      const camp = this.options.find(opt => opt.mode === 'campaign');
+      if (!camp) return;
+      this.scene.start('Game', {
+        levelIndex: camp.levelIndex,
+        score: 0, lives: 3,
+        source: 'new',
+        mode: camp.mode,
+        numPlayers: this.numPlayers
+      });
+      return;
+    }
     this.scene.start('Game', {
       levelIndex: o.levelIndex,
       score: 0, lives: 3,
       source: 'new',
-      mode: o.mode
+      mode: o.mode,
+      numPlayers: this.numPlayers
     });
   }
 }
@@ -727,6 +823,9 @@ class GameScene extends Phaser.Scene {
     this.lives = data.lives ?? 3;
     this.source = data.source ?? 'new';
     this.mode = data.mode ?? 'campaign';  // 'campaign' | 'single'
+    this.numPlayers = data.numPlayers != null
+      ? (data.numPlayers === 2 ? 2 : 1)
+      : Store.getNumPlayers();
     this.scoreAtLevelStart = this.score;
     this.level = LEVELS[this.levelIndex];
     this.mapData = this.level.map.map(row => [...row]);
@@ -741,8 +840,7 @@ class GameScene extends Phaser.Scene {
     this.comboTimer = null;
     this.exitUnlocked = false;
     this._blockedToastAt = 0;
-    this.playerDir = null;       // dir actual: 'L','R','U','D' o null
-    this.playerNextDir = null;   // dir en buffer esperando alineación
+    this.players = [];
     this._chaseReady = false;    // gracia al comenzar el nivel
     this._graceEnd = 0;
   }
@@ -918,52 +1016,79 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnPlayer(){
-    const x = this.playerSpawn.col * TILE + TILE/2;
-    const y = this.playerSpawn.row * TILE + TILE/2;
-    this.player = this.physics.add.image(x, y, 'banana');
-    this.player.setCollideWorldBounds(true);
-    this.player.body.setSize(24, 24);
-    this.physics.add.collider(this.player, this.wallGroup);
-
-    this.physics.add.overlap(this.player, this.pesoGroup, (player, peso) => {
-      peso.destroy();
-      this.pesoCount--;
-      this.comboCount++;
-      const mult = Math.max(1, this.comboCount);
-      this.score += 10 * mult;
-      if (this.comboCount >= 2){
-        VFX.flashText(this, `x${this.comboCount}`, player.x, player.y - 10, {
-          color: PALETTE.textAccent, size: '10px', duration: 500
-        });
-      }
-      if (this.comboTimer) this.comboTimer.remove();
-      this.comboTimer = this.time.delayedCall(500, () => this.comboCount = 0);
-
-      VFX.spawnParticles(this, peso.x, peso.y, PALETTE.peso, 5);
-      Audio.sfx('pickup');
-
-      if (this.pesoCount === 0) this.unlockExit();
-      this.updateHUD();
-    });
-
-    this.physics.add.overlap(this.player, this.canaGroup, (player, cana) => {
-      cana.destroy();
-      this.activateCana();
-    });
-
-    this.physics.add.overlap(this.player, this.exitGroup, () => {
-      if (!this.exitUnlocked){
-        if (this.time.now - this._blockedToastAt > 1400){
-          this._blockedToastAt = this.time.now;
-          VFX.flashText(this, `FALTAN ${this.pesoCount} PESOS`, W/2, H/2, {
-            color: PALETTE.textDanger, size: '16px', duration: 1200, rise: 10
-          });
-          VFX.shake(this, 'light');
+    const baseCol = this.playerSpawn.col;
+    const baseRow = this.playerSpawn.row;
+    const offsets = [[0,0]];
+    if (this.numPlayers === 2){
+      // P2 spawn: vecino caminable, o mismo tile si no hay
+      const cands = [[1,0],[-1,0],[0,1],[0,-1]];
+      let off = [0,0];
+      for (const [dc,dr] of cands){
+        const nc = baseCol+dc, nr = baseRow+dr;
+        if (nc>=0&&nc<COLS&&nr>=0&&nr<ROWS && this.mapData[nr][nc] !== T.WALL){
+          off = [dc,dr]; break;
         }
-        return;
       }
-      this.levelComplete();
+      offsets.push(off);
+    }
+
+    offsets.forEach((off, idx) => {
+      const col = baseCol + off[0];
+      const row = baseRow + off[1];
+      const x = col * TILE + TILE/2;
+      const y = row * TILE + TILE/2;
+      const sprite = this.physics.add.image(x, y, 'banana');
+      sprite.setCollideWorldBounds(true);
+      sprite.body.setSize(24, 24);
+      if (idx === 1) sprite.setTint(0x9ad0ff); // P2 azulado
+      this.physics.add.collider(sprite, this.wallGroup);
+
+      const player = { sprite, dir: null, nextDir: null, spawnCol: col, spawnRow: row, idx };
+      this.players.push(player);
+
+      this.physics.add.overlap(sprite, this.pesoGroup, (s, peso) => {
+        peso.destroy();
+        this.pesoCount--;
+        this.comboCount++;
+        const mult = Math.max(1, this.comboCount);
+        this.score += 10 * mult;
+        if (this.comboCount >= 2){
+          VFX.flashText(this, `x${this.comboCount}`, s.x, s.y - 10, {
+            color: PALETTE.textAccent, size: '10px', duration: 500
+          });
+        }
+        if (this.comboTimer) this.comboTimer.remove();
+        this.comboTimer = this.time.delayedCall(500, () => this.comboCount = 0);
+
+        VFX.spawnParticles(this, peso.x, peso.y, PALETTE.peso, 5);
+        Audio.sfx('pickup');
+
+        if (this.pesoCount === 0) this.unlockExit();
+        this.updateHUD();
+      });
+
+      this.physics.add.overlap(sprite, this.canaGroup, (s, cana) => {
+        cana.destroy();
+        this.activateCana();
+      });
+
+      this.physics.add.overlap(sprite, this.exitGroup, () => {
+        if (!this.exitUnlocked){
+          if (this.time.now - this._blockedToastAt > 1400){
+            this._blockedToastAt = this.time.now;
+            VFX.flashText(this, `FALTAN ${this.pesoCount} PESOS`, W/2, H/2, {
+              color: PALETTE.textDanger, size: '16px', duration: 1200, rise: 10
+            });
+            VFX.shake(this, 'light');
+          }
+          return;
+        }
+        this.levelComplete();
+      });
     });
+
+    // Alias para código legacy
+    this.player = this.players[0].sprite;
   }
 
   spawnEnemies(){
@@ -978,12 +1103,17 @@ class GameScene extends Phaser.Scene {
       chorro.spawnCol = sp.col;
       chorro.spawnRow = sp.row;
       chorro.eaten = false;
+      chorro.aiState = 'wander';    // 'wander' | 'chase'
+      chorro.wanderDir = null;      // [dc,dr] del último paso
+      chorro.chaseTicks = 0;        // ticks de memoria tras perder LOS
       this.physics.add.collider(chorro, this.wallGroup);
-      this.physics.add.overlap(chorro, this.player, () => {
-        if (!this._chaseReady) return;       // gracia: no dañan
-        if (chorro.eaten) return;
-        if (this.canaActive) this.eatChorro(chorro);
-        else this.loseLife();
+      this.players.forEach(p => {
+        this.physics.add.overlap(chorro, p.sprite, () => {
+          if (!this._chaseReady) return;       // gracia: no dañan
+          if (chorro.eaten) return;
+          if (this.canaActive) this.eatChorro(chorro);
+          else this.loseLife();
+        });
       });
       this.chorros.push(chorro);
     });
@@ -1013,8 +1143,18 @@ class GameScene extends Phaser.Scene {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D
     });
+    // En 1P, ambos sets controlan a P1. En 2P, P1=WASD, P2=flechas.
+    this.players.forEach(p => {
+      if (this.numPlayers === 2){
+        p.controls = p.idx === 0 ? [this.wasd] : [this.cursors];
+      } else {
+        p.controls = [this.wasd, this.cursors];
+      }
+    });
     this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
     this.input.keyboard.on('keydown-P', () => this.pauseGame());
+    // START1 (Enter) en el cabinet — única tecla disponible para pausar
+    this.input.keyboard.on('keydown-ENTER', () => this.pauseGame());
   }
 
   pauseGame(){
@@ -1029,27 +1169,65 @@ class GameScene extends Phaser.Scene {
 
   moveEnemies(){
     if (this.phase !== 'playing') return;
-    if (!this._chaseReady) return;       // gracia: se quedan en la casa
-    if (!this.player || !this.player.active) return;
-    const px = Math.floor(this.player.x / TILE);
-    const py = Math.floor(this.player.y / TILE);
+    if (!this._chaseReady) return;
+    if (!this.players || !this.players.length) return;
+
     this.chorros.forEach(chorro => {
       if (!chorro.active || chorro.eaten) return;
       const cx = Math.floor(chorro.x / TILE);
       const cy = Math.floor(chorro.y / TILE);
-      const step = this.ai.nextStep(cx, cy, px, py, this.canaActive);
+      const speed = this.canaActive ? this.level.chorroSpeed * 0.6 : this.level.chorroSpeed;
+
+      // Elegir blanco: en LOS preferí al que ve; si no, el más cercano por Manhattan
+      let target = null;
+      let seesAny = false;
+      for (const p of this.players){
+        if (!p.sprite.active) continue;
+        const tc = Math.floor(p.sprite.x / TILE);
+        const tr = Math.floor(p.sprite.y / TILE);
+        if (this.ai.hasLOS(cx, cy, tc, tr)){ target = { c: tc, r: tr }; seesAny = true; break; }
+      }
+      if (!target){
+        let best = Infinity;
+        for (const p of this.players){
+          if (!p.sprite.active) continue;
+          const tc = Math.floor(p.sprite.x / TILE);
+          const tr = Math.floor(p.sprite.y / TILE);
+          const d = Math.abs(tc - cx) + Math.abs(tr - cy);
+          if (d < best){ best = d; target = { c: tc, r: tr }; }
+        }
+      }
+      if (!target){ chorro.setVelocity(0, 0); return; }
+
+      let step;
+      if (this.canaActive){
+        chorro.aiState = 'wander';
+        chorro.chaseTicks = 0;
+        step = this.ai.nextStep(cx, cy, target.c, target.r, true);
+      } else {
+        if (seesAny){
+          chorro.aiState = 'chase';
+          chorro.chaseTicks = 6;
+        } else if (chorro.aiState === 'chase'){
+          chorro.chaseTicks--;
+          if (chorro.chaseTicks <= 0){ chorro.aiState = 'wander'; chorro.wanderDir = null; }
+        }
+
+        if (chorro.aiState === 'chase'){
+          step = this.ai.nextStep(cx, cy, target.c, target.r, false);
+        } else {
+          step = this.ai.nextStepWander(cx, cy, chorro.wanderDir);
+          if (step) chorro.wanderDir = [step[0]-cx, step[1]-cy];
+        }
+      }
+
       if (!step){ chorro.setVelocity(0, 0); return; }
       const [nc, nr] = step;
-      const tx = nc * TILE + TILE/2;
-      const ty = nr * TILE + TILE/2;
-      const speed = this.canaActive ? this.level.chorroSpeed * 0.6 : this.level.chorroSpeed;
+      const tx = nc * TILE + TILE/2, ty = nr * TILE + TILE/2;
       const dx = tx - chorro.x, dy = ty - chorro.y;
       const d = Math.sqrt(dx*dx + dy*dy);
-      if (d > 1){
-        chorro.setVelocity((dx/d) * speed, (dy/d) * speed);
-      } else {
-        chorro.setVelocity(0, 0);
-      }
+      if (d > 1) chorro.setVelocity((dx/d)*speed, (dy/d)*speed);
+      else chorro.setVelocity(0, 0);
     });
   }
 
@@ -1131,17 +1309,17 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    const sprites = this.players.map(p => p.sprite);
     this.tweens.add({
-      targets: this.player, alpha: 0, duration: 140, yoyo: true, repeat: 5,
+      targets: sprites, alpha: 0, duration: 140, yoyo: true, repeat: 5,
       onComplete: () => {
-        this.player.setAlpha(1);
-        this.player.setPosition(
-          this.playerSpawn.col * TILE + TILE/2,
-          this.playerSpawn.row * TILE + TILE/2
-        );
-        this.player.setVelocity(0, 0);
-        this.playerDir = null;
-        this.playerNextDir = null;
+        this.players.forEach(p => {
+          p.sprite.setAlpha(1);
+          p.sprite.setPosition(p.spawnCol * TILE + TILE/2, p.spawnRow * TILE + TILE/2);
+          p.sprite.setVelocity(0, 0);
+          p.dir = null;
+          p.nextDir = null;
+        });
         this.chorros.forEach(c => {
           if (!c.active) return;
           c.setPosition(c.spawnCol * TILE + TILE/2, c.spawnRow * TILE + TILE/2);
@@ -1166,7 +1344,7 @@ class GameScene extends Phaser.Scene {
     if (this.aiTimer) this.aiTimer.remove();
     // Detener enemigos y jugador
     if (this.chorros) this.chorros.forEach(c => c.active && c.setVelocity(0, 0));
-    if (this.player) this.player.setVelocity(0, 0);
+    if (this.players) this.players.forEach(p => p.sprite.setVelocity(0, 0));
     Audio.musicStop();
     VFX.shake(this, 'light');
 
@@ -1195,41 +1373,39 @@ class GameScene extends Phaser.Scene {
       } else {
         this.scene.start('Game', {
           levelIndex: next, score: this.score, lives: this.lives,
-          source: 'next', mode: this.mode
+          source: 'next', mode: this.mode, numPlayers: this.numPlayers
         });
       }
     });
   }
 
-  update(time, delta){
-    if (this.phase !== 'playing') {
-      if (this.player) this.player.setVelocity(0, 0);
-      return;
-    }
-    if (!this.player || !this.player.active) return;
-
+  _stepPlayer(p, time){
+    const sprite = p.sprite;
+    if (!sprite || !sprite.active) return;
     const speed = 130;
 
     // ── Input → dirección pedida (cardinal, sin diagonales) ───────
-    // Prioridad: la última dirección presionada gana.
-    const L = this.cursors.left.isDown  || this.wasd.left.isDown;
-    const R = this.cursors.right.isDown || this.wasd.right.isDown;
-    const U = this.cursors.up.isDown    || this.wasd.up.isDown;
-    const D = this.cursors.down.isDown  || this.wasd.down.isDown;
+    let L = false, R = false, U = false, D = false;
+    for (const c of p.controls){
+      if (c.left.isDown)  L = true;
+      if (c.right.isDown) R = true;
+      if (c.up.isDown)    U = true;
+      if (c.down.isDown)  D = true;
+    }
     let pressed = null;
     if (L) pressed = 'L';
     if (R) pressed = 'R';
     if (U) pressed = 'U';
     if (D) pressed = 'D';
-    if (pressed) this.playerNextDir = pressed;
+    if (pressed) p.nextDir = pressed;
 
     // ── Estado actual en grilla ───────────────────────────────────
-    const px = this.player.x, py = this.player.y;
+    const px = sprite.x, py = sprite.y;
     const tc = Math.floor(px / TILE);
     const tr = Math.floor(py / TILE);
     const cx = tc * TILE + TILE/2;
     const cy = tr * TILE + TILE/2;
-    const ALIGN = 5; // tolerancia para considerarlo centrado
+    const ALIGN = 5;
     const alignedX = Math.abs(px - cx) < ALIGN;
     const alignedY = Math.abs(py - cy) < ALIGN;
 
@@ -1244,45 +1420,49 @@ class GameScene extends Phaser.Scene {
       return inBounds(nc, nr) && this.mapData[nr][nc] !== T.WALL;
     };
 
-    // ── Intentar adoptar la dirección buffereada ──────────────────
-    if (this.playerNextDir && this.playerNextDir !== this.playerDir) {
-      const n = this.playerNextDir;
+    if (p.nextDir && p.nextDir !== p.dir) {
+      const n = p.nextDir;
       const isReverse =
-        (n === 'L' && this.playerDir === 'R') ||
-        (n === 'R' && this.playerDir === 'L') ||
-        (n === 'U' && this.playerDir === 'D') ||
-        (n === 'D' && this.playerDir === 'U');
-      // Cambios perpendiculares requieren estar alineado con el eje perpendicular
+        (n === 'L' && p.dir === 'R') ||
+        (n === 'R' && p.dir === 'L') ||
+        (n === 'U' && p.dir === 'D') ||
+        (n === 'D' && p.dir === 'U');
       const perpOk = (n === 'L' || n === 'R') ? alignedY : alignedX;
-      if ((isReverse || this.playerDir === null || perpOk) && canMove(n)) {
-        this.playerDir = n;
-        // Snap al centro del eje perpendicular → nunca te rozás con la esquina
-        if (n === 'L' || n === 'R') this.player.y = cy;
-        else this.player.x = cx;
+      if ((isReverse || p.dir === null || perpOk) && canMove(n)) {
+        p.dir = n;
+        if (n === 'L' || n === 'R') sprite.y = cy;
+        else sprite.x = cx;
       }
     }
 
-    // ── Si está alineado y el próximo tile es pared, frenar en seco ──
-    if (this.playerDir && alignedX && alignedY && !canMove(this.playerDir)) {
-      this.player.setPosition(cx, cy);
-      this.player.setVelocity(0, 0);
-      this.playerDir = null;
+    if (p.dir && alignedX && alignedY && !canMove(p.dir)) {
+      sprite.setPosition(cx, cy);
+      sprite.setVelocity(0, 0);
+      p.dir = null;
     }
 
-    // ── Aplicar velocidad en un solo eje ──────────────────────────
     let vx = 0, vy = 0;
-    if (this.playerDir === 'L') vx = -speed;
-    else if (this.playerDir === 'R') vx = speed;
-    else if (this.playerDir === 'U') vy = -speed;
-    else if (this.playerDir === 'D') vy = speed;
-    this.player.setVelocity(vx, vy);
+    if (p.dir === 'L') vx = -speed;
+    else if (p.dir === 'R') vx = speed;
+    else if (p.dir === 'U') vy = -speed;
+    else if (p.dir === 'D') vy = speed;
+    sprite.setVelocity(vx, vy);
 
-    // Facing + bamboleo (no upside-down)
-    if (this.playerDir === 'L') this.player.setFlipX(true);
-    else if (this.playerDir === 'R') this.player.setFlipX(false);
+    if (p.dir === 'L') sprite.setFlipX(true);
+    else if (p.dir === 'R') sprite.setFlipX(false);
 
-    const moving = this.playerDir !== null;
-    this.player.setRotation(moving ? Math.sin(time / 70) * 0.18 : 0);
+    const moving = p.dir !== null;
+    sprite.setRotation(moving ? Math.sin(time / 70) * 0.18 : 0);
+  }
+
+  update(time, delta){
+    if (this.phase !== 'playing') {
+      this.players && this.players.forEach(p => p.sprite.setVelocity(0, 0));
+      return;
+    }
+    if (!this.players || !this.players.length) return;
+
+    this.players.forEach(p => this._stepPlayer(p, time));
 
     // Countdown de ventaja en HUD
     if (this._graceLabel){
@@ -1475,9 +1655,12 @@ class WinScene extends Phaser.Scene {
 }
 
 // ─── GAME INIT ──────────────────────────────────────────────────────────────
+// El cabinet/dev-UI monta el juego en #game-root; en local usamos #game.
+// Esperamos a que el DOM esté listo antes de chequear, porque el dev UI
+// dispara initGame() desde el <head> antes de parsear el <body>.
 const config = {
   type: Phaser.AUTO,
-  parent: 'game',
+  parent: 'game-root',
   width: W,
   height: H,
   backgroundColor: '#0b0e14',
@@ -1491,4 +1674,18 @@ const config = {
   scene: [BootScene, MenuScene, GameScene, PauseScene, GameOverScene, WinScene]
 };
 
-new Phaser.Game(config);
+function _bootGame(){
+  // Si #game-root no existe (modo local), creamos uno de respaldo dentro de #game o body.
+  if (!document.getElementById('game-root')) {
+    const host = document.getElementById('game') || document.body;
+    const root = document.createElement('div');
+    root.id = 'game-root';
+    host.appendChild(root);
+  }
+  Store.init().finally(() => new Phaser.Game(config));
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _bootGame, { once: true });
+} else {
+  _bootGame();
+}
