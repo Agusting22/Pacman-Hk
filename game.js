@@ -386,19 +386,31 @@ function generateTextures(scene){
 
   g.generateTexture('banana', 32, 32);
 
-  // Peso 16×16
+  // Billete (banknote) 26×12 — verde con $ en el centro
   g.clear();
-  g.fillStyle(PALETTE.peso);
-  g.fillCircle(8, 8, 7);
-  g.fillStyle(0x145a32);
-  g.fillCircle(8, 8, 5);
-  g.fillStyle(PALETTE.peso);
-  g.fillRect(7, 4, 2, 8);
-  g.fillStyle(0x000000);
-  g.fillRect(5, 5, 6, 2);
-  g.fillRect(5, 9, 6, 2);
-  g.fillRect(7, 4, 2, 8);
-  g.generateTexture('peso', 16, 16);
+  g.fillStyle(0x0d3a1f);                  // borde oscuro
+  g.fillRect(0, 0, 26, 12);
+  g.fillStyle(PALETTE.peso);              // verde billete
+  g.fillRect(1, 1, 24, 10);
+  g.fillStyle(0x145a32);                  // óvalo central
+  g.fillRect(8, 3, 10, 6);
+  g.fillStyle(0xc8e6c9);                  // detalles claros laterales
+  g.fillRect(2, 4, 2, 4);
+  g.fillRect(22, 4, 2, 4);
+  g.fillRect(3, 3, 1, 1);
+  g.fillRect(3, 8, 1, 1);
+  g.fillRect(22, 3, 1, 1);
+  g.fillRect(22, 8, 1, 1);
+  g.fillStyle(0xeaffea);                  // signo $
+  g.fillRect(12, 4, 2, 4);
+  g.fillRect(11, 4, 1, 1);
+  g.fillRect(11, 5, 3, 1);
+  g.fillRect(11, 6, 1, 1);
+  g.fillRect(11, 7, 3, 1);
+  g.fillRect(13, 7, 1, 1);
+  g.fillRect(12, 3, 1, 1);
+  g.fillRect(12, 8, 1, 1);
+  g.generateTexture('billete', 26, 12);
 
   // Cana (gorra policía) 24×24
   g.clear();
@@ -672,10 +684,6 @@ class BootScene extends Phaser.Scene {
     this.add.text(W/2, H/2, 'CARGANDO...', {
       fontFamily: 'monospace', fontSize: '16px', color: '#ffffff'
     }).setOrigin(0.5);
-    // Billete real de 1000 pesos como pickup
-    this.load.image('billete', 'Billete10002023.jpg');
-    // Foto del chorro (enemigo real)
-    this.load.image('chorro-photo', 'hackathon.png');
   }
   create(){
     generateTextures(this);
@@ -945,7 +953,6 @@ class GameScene extends Phaser.Scene {
           this.wallGroup.add(wall);
         } else if (tile === T.PESO){
           const bill = this.pesoGroup.create(x, y, 'billete');
-          bill.setDisplaySize(26, 11);
           bill.refreshBody();
           // Balanceo sutil (solo ángulo para no mover el body estático)
           this.tweens.add({
@@ -1098,7 +1105,7 @@ class GameScene extends Phaser.Scene {
     spawns.forEach((sp) => {
       const x = sp.col * TILE + TILE/2;
       const y = sp.row * TILE + TILE/2;
-      const chorro = this.physics.add.image(x, y, 'chorro-photo').setDisplaySize(30, 30);
+      const chorro = this.physics.add.image(x, y, 'chorro');
       chorro.body.setSize(22, 22);
       chorro.spawnCol = sp.col;
       chorro.spawnRow = sp.row;
@@ -1123,16 +1130,9 @@ class GameScene extends Phaser.Scene {
 
   // Cambia apariencia del chorro según su estado
   setChorroLook(c, state){
-    if (state === 'eaten'){
-      c.setTexture('chorro-eyes');
-      c.setDisplaySize(24, 24);
-      c.clearTint();
-    } else {
-      c.setTexture('chorro-photo');
-      c.setDisplaySize(30, 30);
-      if (state === 'scared') c.setTint(0x3498db);
-      else c.clearTint();
-    }
+    if (state === 'eaten') c.setTexture('chorro-eyes');
+    else if (state === 'scared') c.setTexture('chorro-scared');
+    else c.setTexture('chorro');
   }
 
   setupInput(){
